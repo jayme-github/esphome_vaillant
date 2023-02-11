@@ -1,0 +1,189 @@
+esphome:
+  name: vaillant
+  includes:
+    - vaillantx6.h
+
+esp32:
+  board: az-delivery-devkit-v4
+  framework:
+    type: arduino
+
+debug:
+  update_interval: 10s
+
+# Enable logging
+logger:
+
+syslog:
+    ip_address: !secret syslog_ip_address
+    port: !secret syslog_port
+
+# Enable Home Assistant API
+api:
+  password: !secret api_password
+
+ota:
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Vaillant Fallback Hotspot"
+    password: !secret ap_password
+
+captive_portal:
+
+text_sensor:
+  - platform: debug
+    reset_reason:
+      name: "Reset Reason"
+
+sensor:
+  - platform: uptime
+    id: vaillant_uptime
+    name: Vaillant Uptime
+    unit_of_measurement: "s"
+  - platform: wifi_signal
+    id: wifi_signal_percent
+    name: "WiFi Signal"
+    # wifi_signal is reported as signal strength/RSSI in dB
+    # convert to percent via filter
+    filters:
+      - lambda: return min(max(2 * (x + 100.0), 0.0), 100.0);
+    unit_of_measurement: "%"
+    update_interval: 60s
+    entity_category: "diagnostic"
+  - platform: debug
+    free:
+      name: "Heap Free"
+    block:
+      name: "Heap Max Block"
+    loop_time:
+      name: "Loop Time"
+  # Vaillant stuff
+  - name: "Vorlauf ist"
+    id: vaill0
+    platform: template
+    unit_of_measurement: "°C"
+    update_interval: 10s
+    lambda: "return {};"
+  - name: "Vorlauf set"
+    id: vaill1
+    platform: template
+    unit_of_measurement: "°C"
+    update_interval: 10s
+    lambda: "return {};"
+  - name: "Vorlauf soll"
+    id: vaill2
+    platform: template
+    unit_of_measurement: "°C"
+    update_interval: 10s
+    lambda: "return {};"
+  - name: "Vorlauf 789 soll"
+    id: vaill3
+    platform: template
+    unit_of_measurement: "°C"
+    update_interval: 10s
+    lambda: "return {};"
+  - name: "Rücklauf ist"
+    id: vaill4
+    platform: template
+    unit_of_measurement: "°C"
+    update_interval: 10s
+    lambda: "return {};"
+  - name: "Brauchwasser ist"
+    id: vaill5
+    platform: template
+    unit_of_measurement: "°C"
+    update_interval: 10s
+    lambda: "return {};"
+  - name: "Brauchwasser soll"
+    id: vaill6
+    platform: template
+    unit_of_measurement: "°C"
+    update_interval: 10s
+    lambda: "return {};"
+  - name: "Verbleibende Brennsperrzeit"
+    id: mvaill0
+    platform: template
+    unit_of_measurement: "min"
+    update_interval: 10s
+    accuracy_decimals: 0
+    lambda: "return {};"
+  - name: "Used as input sensor for the PID component"
+    id: pid_vorlauf_input
+    internal: true
+    platform: copy
+    source_id: vaill3
+    unit_of_measurement: "°C"
+    filters:
+      - median:
+          window_size: 3
+          send_every: 1
+
+binary_sensor:
+  - name: "Brenner"
+    id: bvaill0
+    platform: template
+    lambda: "return {};"
+  - name: "Winter"
+    id: bvaill1
+    platform: template
+    lambda: "return {};"
+  - name: "Pumpe"
+    id: bvaill2
+    platform: template
+    lambda: "return {};"
+
+custom_component:
+- lambda: |-
+    auto vx6 = new Vaillantx6(id(x6_uart),
+                              id(vaill0),id(vaill1),id(vaill2),id(vaill3),
+                              id(vaill4),id(vaill5),id(vaill6),
+                              id(bvaill0),id(bvaill1),id(bvaill2),
+                              id(mvaill0));
+    App.register_component(vx6);
+    return {vx6};
+
+climate:
+  - platform: pid
+    id: vaillant_pid
+    name: "PID Vorlauf"
+    sensor: pid_vorlauf_input
+    heat_output: vaillant_789
+    default_target_temperature: "50°C"
+    visual:
+      min_temperature: 20
+      max_temperature: 80
+      temperature_step: 1
+    control_parameters:
+      output_averaging_samples: 3
+      # No Overshoot PID
+      kp: 0.00460
+      ki: 0.00046
+      kd: 0.02878
+    deadband_parameters:
+      threshold_high: 0.9°C
+      threshold_low: -0.9°C
+      kp_multiplier: 0.0   # proportional gain turned off inside deadband
+      ki_multiplier: 0.05  # integral accumulates at only 5% of normal ki
+      kd_multiplier: 0.0   # derviative is turned off inside deadband
+      deadband_output_averaging_samples: 15   # average the output over 15 samples within the deadband
+
+uart:
+  id: x6_uart
+  tx_pin: GPIO17
+  rx_pin: GPIO16
+  baud_rate: 9600
+
+output:
+  - platform: ledc
+    pin: GPIO27
+    id: vaillant_789
+    frequency: 30kHz
+    zero_means_zero: true
+    min_power: 0.1
+    max_power: 0.8
