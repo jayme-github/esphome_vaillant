@@ -1,0 +1,3 @@
+[submodule "custom_components/syslog"]
+	path = custom_components/syslog
+	url = https://github.com/TheStaticTurtle/esphome_syslog.git
