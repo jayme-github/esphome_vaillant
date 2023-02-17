@@ -36,6 +36,10 @@ wifi:
 
 captive_portal:
 
+switch:
+  - platform: restart
+    name: "Vaillant Restart"
+
 text_sensor:
   - platform: debug
     reset_reason:
