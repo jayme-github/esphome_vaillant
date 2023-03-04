@@ -4,9 +4,11 @@ esphome:
     - vaillantx6.h
 
 esp32:
-  board: az-delivery-devkit-v4
+  #board: az-delivery-devkit-v4
+  board: esp32dev
   framework:
-    type: arduino
+    #type: arduino
+    type: esp-idf
 
 debug:
   update_interval: 10s
@@ -20,7 +22,8 @@ syslog:
 
 # Enable Home Assistant API
 api:
-  password: !secret api_password
+  encryption:
+    key: !secret api_encryption_key
 
 ota:
   password: !secret ota_password
@@ -34,7 +37,7 @@ wifi:
     ssid: "Vaillant Fallback Hotspot"
     password: !secret ap_password
 
-captive_portal:
+#captive_portal:
 
 switch:
   - platform: restart
@@ -60,6 +63,7 @@ sensor:
     unit_of_measurement: "%"
     update_interval: 60s
     entity_category: "diagnostic"
+    device_class: ""
   - platform: debug
     free:
       name: "Heap Free"

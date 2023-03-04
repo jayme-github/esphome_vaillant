@@ -1,8 +1,11 @@
 #include "esphome.h"
+#include <string>
 
 #define CMD_LENGTH 7
 #define ANSWER_LENGTH 8
 #define RETURN_TYPE_COUNT 3
+
+typedef unsigned char byte;
 
 void logCmd(const char *tag, byte *cmd)
 {
@@ -57,7 +60,7 @@ int VaillantParseBool(byte *answerBuff, uint8_t offset)
 
 struct VaillantCommand
 {
-  String Name;
+  std::string Name;
   byte Address;
   VaillantReturnTypes ReturnTypes[RETURN_TYPE_COUNT];
   // SensorID contains the ID of the sensor to use, corresponding to the ReturnType.
@@ -268,6 +271,8 @@ public:
         switch (vaillantCommands[i].ReturnTypes[t])
         {
         case None:
+        case SensorState:
+          // FIXME: This ignores the sensor state, it probably should not.
           // Exit the loop on first None type, there won't be more
           goto exit_type_loop;
         case Temperature:
